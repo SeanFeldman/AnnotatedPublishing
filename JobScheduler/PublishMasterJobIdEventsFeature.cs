@@ -1,5 +1,4 @@
-﻿using NServiceBus.Pipeline;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +7,7 @@ using NServiceBus;
 using NServiceBus.Extensibility;
 using NServiceBus.Features;
 using NServiceBus.ObjectBuilder;
+using NServiceBus.Pipeline;
 using NServiceBus.Unicast.Subscriptions;
 using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
 
@@ -57,8 +57,8 @@ namespace JobScheduler
             {
                 if (context.Message.Instance is JobStatusMessage jobStatusMsg)
                 {
-                    var annotatedType = Util.CreateAnnotatedTypeName(jobStatusMsg);
-                    context.Extensions.Set(Util.ContextKey, annotatedType);
+                    var annotatedType = TypeAnnotator.CreateAnnotatedTypeName(jobStatusMsg);
+                    context.Extensions.Set(TypeAnnotator.ContextKey, annotatedType);
                 }
 
                 return next();
@@ -69,7 +69,7 @@ namespace JobScheduler
         {
             public override Task Invoke(IOutgoingPhysicalMessageContext context, Func<Task> next)
             {
-                if (context.Extensions.TryGet(Util.ContextKey, out string extraTypeName))
+                if (context.Extensions.TryGet(TypeAnnotator.ContextKey, out string extraTypeName))
                 {
                     var existingTypes = context.Headers[Headers.EnclosedMessageTypes];
                     var newTypes = $"{extraTypeName};{existingTypes}";
@@ -105,7 +105,7 @@ namespace JobScheduler
                 {
                     if (publishContext.Message.Instance is JobStatusMessage jobStatusMsg)
                     {
-                        var newMessageType = new MessageType(Util.CreateAnnotatedTypeName(jobStatusMsg));
+                        var newMessageType = new MessageType(TypeAnnotator.CreateAnnotatedTypeName(jobStatusMsg));
                         messageTypes = messageTypes.Union(new[] {newMessageType});
                     }
                 }
@@ -114,7 +114,7 @@ namespace JobScheduler
             }
         }
 
-        static class Util
+        static class TypeAnnotator
         {
             internal static string CreateAnnotatedTypeName(JobStatusMessage message)
             {
