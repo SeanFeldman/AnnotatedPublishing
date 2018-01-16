@@ -13,34 +13,6 @@ using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
 
 namespace JobScheduler
 {
-    class ExtractJobStatusMessageIdBehavior : Behavior<IOutgoingLogicalMessageContext>
-    {
-        public override Task Invoke(IOutgoingLogicalMessageContext context, Func<Task> next)
-        {
-            if (context.Message.Instance is JobStatusMessage jobStatusMsg)
-            {
-                var annotatedType = $"JobScheduler.AnnotatedMessages.MasterJobId{jobStatusMsg.MasterJobId}Happened, JobScheduler.AnnotatedMessages, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null";
-                context.Extensions.Set("JobStatusMessage.MasterJobId.EventType", annotatedType);
-            }
-
-            return next();
-        }
-    }
-
-    class AnnotatePublishedMessageBehavior : Behavior<IOutgoingPhysicalMessageContext>
-    {
-        public override Task Invoke(IOutgoingPhysicalMessageContext context, Func<Task> next)
-        {
-            if (context.Extensions.TryGet("JobStatusMessage.MasterJobId.EventType", out string extraTypeName))
-            {
-                var existingTypes = context.Headers[Headers.EnclosedMessageTypes];
-                var newTypes = $"{extraTypeName};{existingTypes}";
-                context.Headers[Headers.EnclosedMessageTypes] = newTypes;
-            }
-            return next();
-        }
-    }
-
     public class PublishMasterJobIdEventsFeature : Feature
     {
         public PublishMasterJobIdEventsFeature()
@@ -78,41 +50,78 @@ namespace JobScheduler
                 return Task.CompletedTask;
             }
         }
-    }
 
-    class SubscriptionStorageWrapper : ISubscriptionStorage
-    {
-        private ISubscriptionStorage realStorage;
-
-        public SubscriptionStorageWrapper(ISubscriptionStorage realStorage)
+        class ExtractJobStatusMessageIdBehavior : Behavior<IOutgoingLogicalMessageContext>
         {
-            this.realStorage = realStorage;
-        }
-
-        public Task Subscribe(Subscriber subscriber, MessageType messageType, ContextBag context)
-        {
-            return realStorage.Subscribe(subscriber, messageType, context);
-        }
-
-        public Task Unsubscribe(Subscriber subscriber, MessageType messageType, ContextBag context)
-        {
-            return realStorage.Unsubscribe(subscriber, messageType, context);
-        }
-
-        public Task<IEnumerable<Subscriber>> GetSubscriberAddressesForMessage(IEnumerable<MessageType> messageTypes, ContextBag context)
-        {
-            if (context is IOutgoingPublishContext publishContext)
+            public override Task Invoke(IOutgoingLogicalMessageContext context, Func<Task> next)
             {
-                if (publishContext.Message.Instance is JobStatusMessage jobStatusMsg)
+                if (context.Message.Instance is JobStatusMessage jobStatusMsg)
                 {
-                    var annotatedType = $"JobScheduler.AnnotatedMessages.MasterJobId{jobStatusMsg.MasterJobId}Happened, JobScheduler.AnnotatedMessages, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null";
-                    var newMessageType = new MessageType(annotatedType);
-
-                    messageTypes = messageTypes.Union(new[] { newMessageType });
+                    var annotatedType = Util.CreateFakeTypeName(jobStatusMsg);
+                    context.Extensions.Set(Util.ContextKey, annotatedType);
                 }
+
+                return next();
+            }
+        }
+
+        class AnnotatePublishedMessageBehavior : Behavior<IOutgoingPhysicalMessageContext>
+        {
+            public override Task Invoke(IOutgoingPhysicalMessageContext context, Func<Task> next)
+            {
+                if (context.Extensions.TryGet(Util.ContextKey, out string extraTypeName))
+                {
+                    var existingTypes = context.Headers[Headers.EnclosedMessageTypes];
+                    var newTypes = $"{extraTypeName};{existingTypes}";
+                    context.Headers[Headers.EnclosedMessageTypes] = newTypes;
+                }
+                return next();
+            }
+        }
+
+        class SubscriptionStorageWrapper : ISubscriptionStorage
+        {
+            private ISubscriptionStorage realStorage;
+
+            public SubscriptionStorageWrapper(ISubscriptionStorage realStorage)
+            {
+                this.realStorage = realStorage;
             }
 
-            return realStorage.GetSubscriberAddressesForMessage(messageTypes, context);
+            public Task Subscribe(Subscriber subscriber, MessageType messageType, ContextBag context)
+            {
+                return realStorage.Subscribe(subscriber, messageType, context);
+            }
+
+            public Task Unsubscribe(Subscriber subscriber, MessageType messageType, ContextBag context)
+            {
+                return realStorage.Unsubscribe(subscriber, messageType, context);
+            }
+
+            public Task<IEnumerable<Subscriber>> GetSubscriberAddressesForMessage(IEnumerable<MessageType> messageTypes,
+                ContextBag context)
+            {
+                if (context is IOutgoingPublishContext publishContext)
+                {
+                    if (publishContext.Message.Instance is JobStatusMessage jobStatusMsg)
+                    {
+                        var newMessageType = new MessageType(Util.CreateFakeTypeName(jobStatusMsg));
+                        messageTypes = messageTypes.Union(new[] {newMessageType});
+                    }
+                }
+
+                return realStorage.GetSubscriberAddressesForMessage(messageTypes, context);
+            }
+        }
+
+        static class Util
+        {
+            internal static string CreateFakeTypeName(JobStatusMessage message)
+            {
+                return $"JobScheduler.AnnotatedMessages.MasterJobId{message.MasterJobId}Happened, JobScheduler.AnnotatedMessages, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null";
+            }
+
+            internal const string ContextKey = "JobStatusMessage.MasterJobId.EventType";
         }
     }
 }
