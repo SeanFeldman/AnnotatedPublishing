@@ -36,37 +36,28 @@ namespace ReportService
         }
     }
 
-    public class JobStatusHandler : IHandleMessages<JobStatusMessage>
+    public class LegacyJobStatusHandlerSubscribesToEverything : IHandleMessages<JobStatusMessage>
     {
-        public static int MessageReceived;
+        private static int dontCare;
+        private static int job7Received;
+        private static int job42Received;
 
         public Task Handle(JobStatusMessage message, IMessageHandlerContext context)
         {
-            Interlocked.Increment(ref MessageReceived);
-            return Task.CompletedTask;
-        }
-    }
+            if (message.MasterJobId == 42)
+            {
+                Interlocked.Increment(ref job42Received);
+            }
+            else if (message.MasterJobId == 7)
+            {
+                Interlocked.Increment(ref job7Received);
+            }
+            else
+            {
+                Interlocked.Increment(ref dontCare);
+            }
 
-    public class OnMasterJobId42 : IHandleMessages<MasterJobId42Happened>
-    {
-        private static int messagesReceived;
-
-        public Task Handle(MasterJobId42Happened message, IMessageHandlerContext context)
-        {
-            var received = Interlocked.Increment(ref messagesReceived);
-            Console.WriteLine($"Received MasterJobId42Happened, {received} received of this type, {JobStatusHandler.MessageReceived} total messages so far...");
-            return Task.CompletedTask;
-        }
-    }
-
-    public class OnMasterJobId13 : IHandleMessages<MasterJobId7Happened>
-    {
-        private static int messagesReceived;
-
-        public Task Handle(MasterJobId7Happened message, IMessageHandlerContext context)
-        {
-            var received = Interlocked.Increment(ref messagesReceived);
-            Console.WriteLine($"Received MasterJobId7Happened, {received} received of this type, {JobStatusHandler.MessageReceived} total messages so far...");
+            Console.WriteLine($"Received {job7Received} MasterJobId7, {job42Received} MasterJobId42, {dontCare} wasteful messages we don't care about, {dontCare + job7Received + job42Received} total");
             return Task.CompletedTask;
         }
     }

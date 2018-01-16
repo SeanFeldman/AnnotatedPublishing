@@ -32,9 +32,10 @@ namespace GetSmartService
                 .Immediate(x => x.NumberOfRetries(0))
                 .Delayed(x => x.NumberOfRetries(0));
 
+            // Hack to make sure we count valid messages before IEvent handler counting total messages 
+            cfg.ExecuteTheseHandlersFirst(typeof(OnMasterJobId86), typeof(OnMasterJobId99));
+
             var endpoint = await Endpoint.Start(cfg);
-            Console.WriteLine(typeof(MasterJobId86Happened).AssemblyQualifiedName);
-            Console.WriteLine(typeof(MasterJobId99Happened).AssemblyQualifiedName);
 
             Console.WriteLine("Press any key to exit.");
             Console.ReadLine();
@@ -43,37 +44,41 @@ namespace GetSmartService
         }
     }
 
-    public class JobStatusHandler : IHandleMessages<IEvent>
-    {
-        public static int MessageReceived;
-
-        public Task Handle(IEvent message, IMessageHandlerContext context)
-        {
-            Interlocked.Increment(ref MessageReceived);
-            return Task.CompletedTask;
-        }
-    }
-
     public class OnMasterJobId86 : IHandleMessages<MasterJobId86Happened>
     {
-        private static int messagesReceived;
+        public static int Count;
 
         public Task Handle(MasterJobId86Happened message, IMessageHandlerContext context)
         {
-            var received = Interlocked.Increment(ref messagesReceived);
-            Console.WriteLine($"Received MasterJobId42Happened, {received} received of this type, {JobStatusHandler.MessageReceived} total IEvents so far...");
+            Interlocked.Increment(ref Count);
             return Task.CompletedTask;
         }
     }
 
     public class OnMasterJobId99 : IHandleMessages<MasterJobId99Happened>
     {
-        private static int messagesReceived;
+        public static int Count;
 
         public Task Handle(MasterJobId99Happened message, IMessageHandlerContext context)
         {
-            var received = Interlocked.Increment(ref messagesReceived);
-            Console.WriteLine($"Received MasterJobId7Happened, {received} received of this type, {JobStatusHandler.MessageReceived} total IEvents so far...");
+            Interlocked.Increment(ref Count);
+            return Task.CompletedTask;
+        }
+    }
+
+
+
+
+
+    public class JustCountingTotalNumberOfMessages : IHandleMessages<IEvent>
+    {
+        private static int total;
+
+        public Task Handle(IEvent message, IMessageHandlerContext context)
+        {
+            Interlocked.Increment(ref total);
+            var dontCare = total - OnMasterJobId86.Count - OnMasterJobId99.Count;
+            Console.WriteLine($"Received {OnMasterJobId86.Count} MasterJobId86, {OnMasterJobId99.Count} MasterJobId99, {dontCare} wasteful messages we don't care about, {total} total");
             return Task.CompletedTask;
         }
     }
