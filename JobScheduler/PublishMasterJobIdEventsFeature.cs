@@ -57,7 +57,7 @@ namespace JobScheduler
             {
                 if (context.Message.Instance is JobStatusMessage jobStatusMsg)
                 {
-                    var annotatedType = Util.CreateFakeTypeName(jobStatusMsg);
+                    var annotatedType = Util.CreateAnnotatedTypeName(jobStatusMsg);
                     context.Extensions.Set(Util.ContextKey, annotatedType);
                 }
 
@@ -105,7 +105,7 @@ namespace JobScheduler
                 {
                     if (publishContext.Message.Instance is JobStatusMessage jobStatusMsg)
                     {
-                        var newMessageType = new MessageType(Util.CreateFakeTypeName(jobStatusMsg));
+                        var newMessageType = new MessageType(Util.CreateAnnotatedTypeName(jobStatusMsg));
                         messageTypes = messageTypes.Union(new[] {newMessageType});
                     }
                 }
@@ -116,7 +116,7 @@ namespace JobScheduler
 
         static class Util
         {
-            internal static string CreateFakeTypeName(JobStatusMessage message)
+            internal static string CreateAnnotatedTypeName(JobStatusMessage message)
             {
                 return $"JobScheduler.AnnotatedMessages.MasterJobId{message.MasterJobId}Happened, JobScheduler.AnnotatedMessages, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null";
             }
