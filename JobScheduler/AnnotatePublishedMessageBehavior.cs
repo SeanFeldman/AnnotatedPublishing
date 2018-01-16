@@ -62,20 +62,14 @@ namespace JobScheduler
 
         class Startup : FeatureStartupTask
         {
-            private IConfigureComponents container;
-            private IBuilder builder;
-
             public Startup(IConfigureComponents container, IBuilder builder)
             {
-                this.container = container;
-                this.builder = builder;
+                var realStorage = builder.Build<ISubscriptionStorage>();
+                container.RegisterSingleton<ISubscriptionStorage>(new SubscriptionStorageWrapper(realStorage));
             }
 
             protected override Task OnStart(IMessageSession session)
             {
-                var realStorage = builder.Build<ISubscriptionStorage>();
-                container.RegisterSingleton<ISubscriptionStorage>(new SubscriptionStorageWrapper(realStorage));
-
                 return Task.CompletedTask;
             }
 
