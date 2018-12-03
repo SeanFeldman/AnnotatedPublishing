@@ -9,6 +9,8 @@ using NServiceBus.Pipeline;
 
 namespace JobScheduler
 {
+    using Autofac;
+
     class Program
     {
         static async Task Main(string[] args)
@@ -19,6 +21,14 @@ namespace JobScheduler
 
             var transport = cfg.UseTransport<MsmqTransport>();
             var routing = transport.Routing();
+
+            var builder = new ContainerBuilder();
+            var container = builder.Build();
+            cfg.UseContainer<AutofacBuilder>(
+                customizations: customizations =>
+                {
+                    customizations.ExistingLifetimeScope(container);
+                });
 
             var persistence = cfg.UsePersistence<InMemoryPersistence>();
 
@@ -32,11 +42,11 @@ namespace JobScheduler
                 var key = Console.ReadKey(true);
                 if (key.Key == ConsoleKey.P)
                 {
-                    for (var i = 0; i < 1000; i++)
+                    for (var i = 0; i < 1/*000*/; i++)
                     {
                         var evt = new JobStatusMessage
                         {
-                            MasterJobId = random.Next(0, 100)
+                            MasterJobId = 99//random.Next(0, 100)
                         };
 
                         await endpoint.Publish(evt);

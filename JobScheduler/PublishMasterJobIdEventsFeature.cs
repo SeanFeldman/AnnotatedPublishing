@@ -98,8 +98,7 @@ namespace JobScheduler
                 return realStorage.Unsubscribe(subscriber, messageType, context);
             }
 
-            public Task<IEnumerable<Subscriber>> GetSubscriberAddressesForMessage(IEnumerable<MessageType> messageTypes,
-                ContextBag context)
+            public Task<IEnumerable<Subscriber>> GetSubscriberAddressesForMessage(IEnumerable<MessageType> messageTypes, ContextBag context)
             {
                 if (context is IOutgoingPublishContext publishContext)
                 {
