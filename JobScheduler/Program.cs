@@ -32,11 +32,11 @@ namespace JobScheduler
                 var key = Console.ReadKey(true);
                 if (key.Key == ConsoleKey.P)
                 {
-                    for (var i = 0; i < 1000; i++)
+                    for (var i = 0; i < 1/*000*/; i++)
                     {
                         var evt = new JobStatusMessage
                         {
-                            MasterJobId = random.Next(0, 100)
+                            MasterJobId = 99//random.Next(0, 100)
                         };
 
                         await endpoint.Publish(evt);
